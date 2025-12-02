@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Levantamento de Viagens — Moto Grupo Viajantes Estradeiros</title>
+  <style>
+    :root {
+      --bg: #0f1220;
+      --card: #161a2f;
+      --text: #e7e9f7;
+      --muted: #a9adc8;
+      --accent: #5ee0a1;
+      --accent2: #77b7ff;
+      --danger: #ff7b7b;
+      --border: #252a46;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 24px;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 20% 0%, #1b2040 0%, var(--bg) 40%, #0b0e19 100%);
+      color: var(--text);
+    }
+    header {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    h1 { font-size: 1.6rem; margin: 0; letter-spacing: 0.3px; }
+    .badge {
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      color: #0a0f19; font-weight: 700; padding: 6px 10px; border-radius: 8px; font-size: 0.9rem;
+      box-shadow: 0 6px 16px rgba(94, 224, 161, 0.25);
+    }
+    .grid {
+      display: grid; gap: 12px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .card {
+      background: linear-gradient(180deg, rgba(34, 39, 70, 0.6), rgba(22, 26, 47, 0.9));
+      border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px;
+      box-shadow: 0 8px 24px rgba(13, 17, 34, 0.55);
+    }
+    .card h3 {
+      margin: 0 0 8px 0; font-size: 0.95rem; color: var(--muted); font-weight: 600;
+    }
+    .metric {
+      font-size: 1.4rem; font-weight: 700; color: var(--text);
+    }
+    .controls {
+      display: grid; gap: 10px; grid-template-columns: 2fr repeat(3, 1fr) auto;
+      align-items: center; margin: 12px 0 16px;
+    }
+    input, select, button {
+      border-radius: 12px; border: 1px solid var(--border); padding: 10px 12px;
+      background: #12162b; color: var(--text); outline: none;
+    }
+    input::placeholder { color: var(--muted); }
+    button {
+      background: linear-gradient(135deg, #2c365f, #223059);
+      cursor: pointer; font-weight: 600;
+    }
+    button.primary { background: linear-gradient(135deg, var(--accent2), var(--accent)); color: #0a0f19; }
+    button.danger { background: linear-gradient(135deg, #b14444, var(--danger)); color: #1b0f0f; }
+    table {
+      width: 100%; border-collapse: collapse; overflow: hidden;
+    }
+    thead th {
+      text-align: left; padding: 12px; font-size: 0.86rem; color: var(--muted); font-weight: 700;
+      background: #1a1f3a; position: sticky; top: 0; z-index: 1; border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    tbody td {
+      padding: 12px; border-bottom: 1px solid var(--border);
+    }
+    tr:hover td { background: rgba(94, 224, 161, 0.05); }
+    .tag {
+      display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: 0.78rem; font-weight: 700;
+      background: rgba(119, 183, 255, 0.15); color: var(--accent2);
+      border: 1px solid rgba(119, 183, 255, 0.35);
+    }
+    .tag.green {
+      background: rgba(94, 224, 161, 0.15); color: var(--accent);
+      border-color: rgba(94, 224, 161, 0.35);
+    }
+    .footer {
+      margin-top: 16px; color: var(--muted); font-size: 0.85rem;
+    }
+    @media (max-width: 960px) {
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .controls { grid-template-columns: 1fr 1fr 1fr; }
+      .controls button { grid-column: span 3; }
+    }
+    @media print {
+      body { background: #fff; color: #000; }
+      .card, header, .controls { box-shadow: none; border: none; }
+      thead th { position: static; background: #eee; color: #000; }
+      .badge { background: #ddd; color: #000; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Levantamento de Viagens — Viajantes Estradeiros</h1>
+    <div class="badge">Atualizado: <span id="lastUpdated">—</span></div>
+  </header>
+
+  <section class="grid">
+    <div class="card">
+      <h3>Viagens registradas</h3>
+      <div class="metric" id="mTotal">0</div>
+    </div>
+    <div class="card">
+      <h3>Distância total (km)</h3>
+      <div class="metric" id="mKm">0</div>
+    </div>
+    <div class="card">
+      <h3>Duração média (dias)</h3>
+      <div class="metric" id="mDuracao">0</div>
+    </div>
+    <div class="card">
+      <h3>Estados/países visitados</h3>
+      <div class="metric" id="mRegioes">—</div>
+    </div>
+  </section>
+
+  <section class="controls">
+    <input id="q" type="search" placeholder="Buscar por destino, origem ou observações..." />
+    <select id="ano">
+      <option value="">Ano</option>
+    </select>
+    <select id="membro">
+      <option value="">Integrante</option>
+    </select>
+    <select id="tipo">
+      <option value="">Tipo</option>
+      <option value="Expedição">Expedição</option>
+      <option value="Passeio">Passeio</option>
+      <option value="Encontro">Encontro de Motociclista</option>
+    </select>
+    <button id="clear">Limpar filtros</button>
+    <button class="primary" id="export">Exportar CSV</button>
+  </section>
+
+  <section class="card">
+    <table id="viagens">
+      <thead>
+        <tr>
+          <th data-key="data">Data</th>
+          <th data-key="origem">Origem</th>
+          <th data-key="destino">Destino</th>
+          <th data-key="estadoPais">Estado/País</th>
+          <th data-key="km" style="text-align:right;">Distância (km)</th>
+          <th data-key="dias" style="text-align:right;">Duração (dias)</th>
+          <th data-key="integrantes">Integrantes</th>
+          <th data-key="tipo">Tipo</th>
+          <th data-key="obs">Observações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>2025-03-30</td>
+          <td>Betim, MG</td>
+          <td>Catas Altas, MG - Mariana - MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">150</td>
+          <td style="text-align:right;">1</td>
+          <td><span class="tag">Daniel</span></td>
+          <td><span class="tag">Passeio</span></td>
+          <td>MotoSerra - Passeio com os Niners</td>
+        </tr>
+         <tr>
+          <td>2025-04-05</td>
+          <td>Betim, MG</td>
+          <td>Desterro de Entre Rios, MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">145</td>
+          <td style="text-align:right;">3</td>
+          <td><span class="tag">Daniel</span></td>
+          <td><span class="tag green">Encontro de Motociclista</span></td>
+          <td>Hospedamos na área de camping e voltamos no Domingo.</td>
+        </tr>
+        <tr>
+          <td>2025-04-11</td>
+          <td>Betim, MG</td>
+          <td>Formiga, MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">170</td>
+          <td style="text-align:right;">3</td>
+          <td><span class="tag">Daniel</span></td>
+          <td><span class="tag green">Encontro de Motociclista</span></td>
+          <td>Trechos com chuva; manutenção leve no dia 3.</td>
+        </tr>
+        <tr>
+          <td>2025-04-26</td>
+          <td>Betim, MG</td>
+          <td>Campo Belo, MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">194</td>
+          <td style="text-align:right;">2</td>
+          <td><span class="tag">Daniel</span><span class="tag">Fernanda</span></td>
+          <td><span class="tag green">Encontro de Motociclista</span></td>
+          <td>Ficamos na casa do Joel do Águias do Horizonte.</td>
+        </tr>
+          <td>2025-06-07</td>
+          <td>Betim, MG</td>
+          <td>Nova Lima, MG - Casa Branca, MG - Brumadinho, MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">90</td>
+          <td style="text-align:right;">1</td>
+          <td><span class="tag">Daniel</span><span class="tag">Fernanda</span><span class="tag">Leo</span><span class="tag">Larice</span></td>
+          <td><span class="tag">Passeio</span></td>
+          <td>Fizemos a Rota Capitão Senra </td>
+        </tr>
+        <tr>
+          <td>2025-06-15</td>
+          <td>Betim, MG</td>
+          <td>Itatiaiuçu, MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">48</td>
+          <td style="text-align:right;">1</td>
+          <td><span class="tag">Daniel</span><span class="tag">Fernanda</span><span class="tag">Leo</span><span class="tag">Larice</span><span class="tag">Alex</span><span class="tag">Suely</span></td>
+          <td><span class="tag">Passeio</span></td>
+          <td>Café da manhã no Restaurante Sr. Adão</td>
+        </tr>
+         <tr>
+          <td>2025-06-25</td>
+          <td>Betim, MG</td>
+          <td>São Roque de Minas, MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">338</td>
+          <td style="text-align:right;">5</td>
+          <td><span class="tag">Leo</span><span class="tag">Larice</span></td>
+          <td><span class="tag">Expedição</span></td>
+          <td>Visitamos a Serra da Canastra</td>
+        </tr>
+        <tr>
+          <td>2025-07-09</td>
+          <td>Betim, MG</td>
+          <td>Paraopeba, MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">103</td>
+          <td style="text-align:right;">1</td>
+          <td><span class="tag">Daniel</span></td>
+          <td><span class="tag">Passeio</span></td>
+          <td>Rock no Curral</td>
+        </tr>
+        <tr>
+          <td>2025-07-13</td>
+          <td>Betim, MG</td>
+          <td>Florestal, MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">41</td>
+          <td style="text-align:right;">1</td>
+          <td><span class="tag">Daniel</span><span class="tag">Leo</span><span class="tag">Larice</span></td>
+          <td><span class="tag">Passeio</span></td>
+          <td>Café da manhã no Milhão</td>
+        </tr>
+        <tr>
+          <td>2025-07-19</td>
+          <td>Betim, MG</td>
+          <td>Congonhas, MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">107</td>
+          <td style="text-align:right;">1</td>
+          <td><span class="tag">Daniel</span></td>
+          <td><span class="tag green">Encontro de Motociclista</span></td>
+          <td>Motofest Congonhas</td>
+        </tr>
+        <tr>
+          <td>2025-07-18</td>
+          <td>Betim, MG</td>
+          <td>Divinópolis, MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">92</td>
+          <td style="text-align:right;">1</td>
+          <td><span class="tag">Daniel</span></td>
+          <td><span class="tag green">Encontro de Motociclista</span></td>
+          <td>DivinaFest</td>
+        </tr>
+         <tr>
+          <td>2025-08-01</td>
+          <td>Betim, MG</td>
+          <td>Brasília, DF</td>
+          <td>DF, Brasil</td>
+          <td style="text-align:right;">803</td>
+          <td style="text-align:right;">4</td>
+          <td><span class="tag">Daniel</span><span class="tag">Fernanda</span><span class="tag">Leo</span><span class="tag">Larice</span></td>
+          <td><span class="tag">Expedição</span></td>
+          <td>Capital Motoweek</td>
+        <tr>
+          <td>2025-08-01</td>
+          <td>Brasília, DF</td>
+          <td>Três Marias, MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">470</td>
+          <td style="text-align:right;">4</td>
+          <td><span class="tag">Daniel</span><span class="tag">Fernanda</span></td>
+          <td><span class="tag">Expedição</span></td>
+          <td>Visita a Três Marias</td>
+        </tr>
+        <tr>
+          <td>2025-08-09</td>
+          <td>Betim, MG</td>
+          <td>Pará de Minas, MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">57</td>
+          <td style="text-align:right;">1</td>
+          <td><span class="tag">Daniel</span></td>
+          <td><span class="tag green">Encontro de Motociclista</span></td>
+          <td>Motorock Pará de Minas</td>
+        </tr>
+        <tr>
+          <td>2025-09-06</td>
+          <td>Betim, MG</td>
+          <td>São Thomé das Letras, MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">282</td>
+          <td style="text-align:right;">2</td>
+          <td><span class="tag">Daniel</span><span class="tag">Fernanda</span></td>
+          <td><span class="tag green">Encontro de Motociclista</span></td>
+          <td>Motorock São Thomé das Letras</td>
+        </tr>
+        <tr>
+          <td>2025-09-16</td>
+          <td>Betim, MG</td>
+          <td>Itatiaiuçu, MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">58</td>
+          <td style="text-align:right;">1</td>
+          <td><span class="tag">Daniel</span></td>
+          <td><span class="tag green">Encontro de Motociclista</span></td>
+          <td>ItaRock</td>
+        </tr>
+        <tr>
+          <td>2025-10-03</td>
+          <td>Betim, MG</td>
+          <td>Oliveira, MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">136</td>
+          <td style="text-align:right;">2</td>
+          <td><span class="tag">Daniel</span><span class="tag">Fernanda</span></td>
+          <td><span class="tag green">Encontro de Motociclista</span></td>
+          <td>Ficamos hospedados na área de camping</td>
+        </tr>
+        <tr>
+          <td>2025-10-20</td>
+          <td>Betim, MG</td>
+          <td>Itatiaiuçu, MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">52</td>
+          <td style="text-align:right;">1</td>
+          <td><span class="tag">Daniel</span><span class="tag">Fernanda</span><span class="tag">Leo</span><span class="tag">Larice</span><span class="tag">Alex</span><span class="tag">Suely</span></td>
+          <td><span class="tag">Passeio</span></td>
+          <td>Café da manhã no Paineiras da Serra</td>
+        </tr>
+        <tr>
+          <td>2025-11-03</td>
+          <td>Betim, MG</td>
+          <td>Itatiaiuçu, MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">48</td>
+          <td style="text-align:right;">1</td>
+          <td><span class="tag">Daniel</span><span class="tag">Alex</span></td>
+          <td><span class="tag">Passeio</span></td>
+          <td>Café da manhã no Restaurante Sr. Adão</td>
+        </tr>
+        <tr>
+          <td>2025-11-17</td>
+          <td>Betim, MG</td>
+          <td>Moeda, MG - Belo Vale, MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">113</td>
+          <td style="text-align:right;">1</td>
+          <td><span class="tag">Daniel</span><span class="tag">Leo</span><span class="tag">Larice</span></td>
+          <td><span class="tag">Passeio</span></td>
+          <td>Passeio em Moeda e Belo Vale</td>
+        </tr>
+        <tr>
+          <td>2025-11-22</td>
+          <td>Betim, MG</td>
+          <td>Lavras Novas, MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">140</td>
+          <td style="text-align:right;">3</td>
+          <td><span class="tag">Leo</span><span class="tag">Larice</span></td>
+          <td><span class="tag">Expedição</span></td>
+          <td>Passeio Leo e Larice</td>
+        </tr>
+        <tr>
+          <td>2025-11-29</td>
+          <td>Betim, MG</td>
+          <td>Sabará, MG - Caeté, MG - Santa Bárbara, MG - Catas Altas, MG</td>
+          <td>MG, Brasil</td>
+          <td style="text-align:right;">358</td>
+          <td style="text-align:right;">1</td>
+          <td><span class="tag">Daniel</span></td>
+          <td><span class="tag">Passeio</span></td>
+          <td>Estrada Real - Caminho Sabarabuçu</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+  <script>
+    // Utilidades
+    const $ = (sel, ctx = document) => ctx.querySelector(sel);
+    const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+    const parseNum = (v) => {
+      if (typeof v === 'number') return v;
+      const n = String(v).replace(/\./g, '').replace(',', '.').trim();
+      return Number(n) || 0;
+    };
+
+    // Preencher selects dinamicamente
+    function initFilters() {
+      const anos = new Set();
+      const membros = new Set();
+      const tbody = $('#viagens tbody');
+
+      $$('#viagens tbody tr').forEach(tr => {
+        const data = tr.children[0].textContent.trim();
+        const ano = (data || '').slice(0, 4);
+        if (ano) anos.add(ano);
+
+        const integrantes = tr.children[6].textContent
+          .split(/\s+/).map(t => t.trim()).filter(Boolean);
+        integrantes.forEach(m => membros.add(m));
+      });
+
+      const anoSel = $('#ano');
+      [...anos].sort().forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a; opt.textContent = a;
+        anoSel.appendChild(opt);
+      });
+
+      const memSel = $('#membro');
+      [...membros].sort().forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m; opt.textContent = m;
+        memSel.appendChild(opt);
+      });
+    }
+
+    // Atualizar métricas
+    function updateMetrics() {
+      const rows = $$('#viagens tbody tr').filter(r => r.style.display !== 'none');
+      $('#mTotal').textContent = rows.length;
+
+      const kmTotal = rows.reduce((sum, r) => sum + parseNum(r.children[4].textContent), 0) * 2;
+      $('#mKm').textContent = kmTotal.toLocaleString('pt-BR');
+
+      const dias = rows.map(r => parseNum(r.children[5].textContent));
+      const media = dias.length ? (dias.reduce((a,b)=>a+b,0) / dias.length) : 0;
+      $('#mDuracao').textContent = media.toFixed(1);
+
+      // Estados/países
+      const reg = new Set(rows.map(r => r.children[3].textContent.trim()));
+      $('#mRegioes').textContent = reg.size ? `${reg.size} regiões` : '—';
+    }
+
+    // Filtros e busca
+    function applyFilters() {
+      const q = $('#q').value.toLowerCase().trim();
+      const ano = $('#ano').value;
+      const membro = $('#membro').value;
+      const tipo = $('#tipo').value;
+
+      $$('#viagens tbody tr').forEach(tr => {
+        const data = tr.children[0].textContent;
+        const anoRow = (data || '').slice(0, 4);
+        const texto = tr.textContent.toLowerCase();
+        const integrantes = tr.children[6].textContent;
+
+        let show = true;
+        if (q && !texto.includes(q)) show = false;
+        if (ano && anoRow !== ano) show = false;
+        if (membro && !integrantes.includes(membro)) show = false;
+        if (tipo && !tr.children[7].textContent.includes(tipo)) show = false;
+
+        tr.style.display = show ? '' : 'none';
+      });
+
+      updateMetrics();
+    }
+
+    // Ordenação por coluna
+    let sortState = {};
+    function sortBy(key, th) {
+      const idx = Array.from(th.parentElement.children).indexOf(th);
+      const tbody = $('#viagens tbody');
+      const rows = $$('#viagens tbody tr');
+
+      const dir = sortState[key] === 'asc' ? 'desc' : 'asc';
+      sortState[key] = dir;
+
+      rows.sort((a, b) => {
+        let va = a.children[idx].textContent.trim();
+        let vb = b.children[idx].textContent.trim();
+
+        // Tentar ordenar numericamente para km/dias
+        if (key === 'km' || key === 'dias') {
+          return dir === 'asc' ? (parseNum(va) - parseNum(vb)) : (parseNum(vb) - parseNum(va));
+        }
+
+        // Datas
+        if (key === 'data') {
+          return dir === 'asc' ? (va.localeCompare(vb)) : (vb.localeCompare(va));
+        }
+
+        return dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+      });
+
+      // Reinsere na ordem
+      rows.forEach(r => tbody.appendChild(r));
+      updateMetrics();
+    }
+
+    // Exportar para CSV
+    function exportCSV() {
+      const rows = [['Data','Origem','Destino','Estado/País','Distância (km)','Duração (dias)','Integrantes','Tipo','Observações']];
+      $$('#viagens tbody tr').forEach(tr => {
+        if (tr.style.display === 'none') return;
+        const cols = Array.from(tr.children).map(td => td.textContent.replace(/\s+/g, ' ').trim());
+        rows.push(cols);
+      });
+      const csv = rows.map(r => r.map(v => `"${v.replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'viagens_viajantes_estradeiros.csv';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Inicialização
+    function init() {
+      initFilters();
+      updateMetrics();
+      $('#lastUpdated').textContent = new Date().toLocaleDateString('pt-BR');
+
+      // Eventos
+      $('#q').addEventListener('input', applyFilters);
+      $('#ano').addEventListener('change', applyFilters);
+      $('#membro').addEventListener('change', applyFilters);
+      $('#tipo').addEventListener('change', applyFilters);
+      $('#clear').addEventListener('click', () => {
+        $('#q').value = ''; $('#ano').value = ''; $('#membro').value = ''; $('#tipo').value = '';
+        applyFilters();
+      });
+      $('#export').addEventListener('click', exportCSV);
+
+      $$('#viagens thead th').forEach(th => {
+        th.addEventListener('click', () => sortBy(th.dataset.key, th));
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
